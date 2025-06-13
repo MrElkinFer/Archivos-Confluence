@@ -15,3 +15,11 @@ cd archivos
 ```Command Prompt
 uv venv venv
 ```
+
+---
+
+# Requerimientos:
+
+1. atlassian-python-api
+2. markdownify
+3. dotenv
