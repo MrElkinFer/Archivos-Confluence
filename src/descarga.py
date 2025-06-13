@@ -24,5 +24,8 @@ class ConfluenceDownloader:
         pagina = self.confluence.get_page_by_title(
             space=self.space_key, title=title)
 
+        cuerpo = pagina["body"]
+
         print(f"nombre nuevo archivo: {filename}")
         print(f"se descarga en : {output_dir}")
+        print(f" El cuerpo del archivo es:\n {cuerpo}")
