@@ -16,4 +16,4 @@ downloader = ConfluenceDownloader(
     CONFLUENCE_URL, USERNAME, API_TOKEN, SPACE_KEY)
 
 prueba = downloader.download_page_as_markdown(
-    title="Resumen gravedad cuática", output_dir="descargas")
+    title=PAGE_TITLE, output_dir="descargas")

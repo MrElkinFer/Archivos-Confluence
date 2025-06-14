@@ -1,12 +1,11 @@
 from atlassian import Confluence
 from markdownify import markdownify
 import os
-from pathlib import Path
 
 
 class ConfluenceDownloader:
 
-    def __init__(self, url: str, username: str, token: str, space_key: str):
+    def __init__(self, url, username, token, space_key):
         self.confluence = Confluence(
             url=url,
             username=username,
@@ -14,18 +13,28 @@ class ConfluenceDownloader:
         )
         self.space_key = space_key
 
-    def download_page_as_markdown(self, title: str, output_dir: str):
+    def download_page_as_markdown(self, title, output_dir):
         # creando la carpeta de salida: ok
         os.makedirs(output_dir, exist_ok=True)
         filename = f"{title.replace(' ', '_')}.md"
 
         # espacio = self.confluence.get_all_pages_from_space(self.space_key)
+        page = self.confluence.get_page_by_title(
+            space=self.space_key,
+            title=title,
+            expand='body.storage')
 
-        pagina = self.confluence.get_page_by_title(
-            space=self.space_key, title=title)
+        if not page:
+            raise ValueError("Página no encontrada.")
+        html_content = page["body"]["storage"]["value"]
 
-        cuerpo = pagina["body"]
+        print(html_content)
 
-        print(f"nombre nuevo archivo: {filename}")
-        print(f"se descarga en : {output_dir}")
-        print(f" El cuerpo del archivo es:\n {cuerpo}")
+        contenido_md = markdownify(html=html_content)
+
+        filepath = os.path.join(output_dir, filename)
+
+        with open(filepath, "w", encoding="utf-8") as f:
+            f.write(contenido_md)
+
+        return filepath
