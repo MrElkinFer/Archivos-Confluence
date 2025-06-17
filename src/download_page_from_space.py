@@ -1,5 +1,5 @@
 from atlassian import Confluence
-import markdownify as md
+from markdownify import markdownify
 import os
 
 
@@ -24,16 +24,18 @@ class ConfluenceSpaceDocumentDownloader:
 
         for page in pages:  # crear carpeta y archivo md
             html = page["body"]["storage"]["value"]
-            print(html)
-            # content_md = md(html)
+            # print(html)
+            content_md = markdownify(html)
 
             page_id = page["id"]
             space_key = page["_expandable"]["space"]
             space_id = space_key.split('/')[-1]
             # print(space_id)
             output_dir = f"knowledge/confluence/spaces/{space_id}/{page_id}"
-            print(output_dir)
-            # os.makedirs(output_dir, exist_ok=True)
+            # print(output_dir)
+            os.makedirs(output_dir, exist_ok=True)
+
+            filepath = os.path.join(output_dir, "content.md")
 
             with open(filepath, "w", encoding="utf-8") as f:
-                f.write(content_md)"""
+                f.write(content_md)
