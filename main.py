@@ -1,5 +1,6 @@
 # from src.descarga import ConfluenceDownloader
 from src.descarga import ConfluenceDownloader
+from src.download_page_from_space import ConfluenceSpaceDocumentDownloader
 import os
 from dotenv import load_dotenv
 
@@ -12,8 +13,15 @@ PAGE_TITLE = os.getenv("PAGE_TITLE")
 USERNAME = os.getenv("USERNAME")
 
 
-downloader = ConfluenceDownloader(
-    CONFLUENCE_URL, USERNAME, API_TOKEN, SPACE_KEY)
+"""downloader = ConfluenceDownloader(
+    CONFLUENCE_URL, USERNAME, API_TOKEN, SPACE_KEY)"""
 
-prueba = downloader.download_page_as_markdown(
-    title=PAGE_TITLE, output_dir="descargas")
+"""prueba = downloader.download_page_as_markdown(
+    title=PAGE_TITLE, output_dir="descargas")"""
+
+
+descarga = ConfluenceSpaceDocumentDownloader(
+    username=USERNAME, token=API_TOKEN, url=CONFLUENCE_URL)
+
+
+prueb = descarga.Downloader_pages_from_space_md(space=SPACE_KEY)
