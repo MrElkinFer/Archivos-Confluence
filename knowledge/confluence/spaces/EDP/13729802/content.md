@@ -7,3 +7,7 @@ La obra se caracteriza por un surrealismo visceral, con imágenes oníricas que 
 El tono melancólico y apocalíptico de "Residencia en la tierra" contrasta marcadamente con la poesía social posterior del autor. Aquí, Neruda no busca la comunicación directa sino la exploración de los rincones más oscuros del alma humana, creando una poesía que es tanto grito de dolor como búsqueda de trascendencia.
 
 Esta obra marca un punto de inflexión en la literatura hispanoamericana, anticipando muchas de las preocupaciones que definirían la poesía del siglo XX.
+
+Redactado por Claude
+
+cambio de prueba 1
