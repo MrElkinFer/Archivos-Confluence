@@ -13,20 +13,33 @@ class ConfluenceSpaceDocumentDownloader:
             password=token,
         )
 
-    def Downloader_pages_from_space_md(self, space):
-
+    def _pages_from_space(self, space: str, start=0, limit=100):
         pages = self.confluence.get_all_pages_from_space(
             space=space,
-            start=0,
+            start=start,
             expand='body.storage',
-            limit=100,
+            limit=limit,
         )
+        return pages
+
+    # TODO: que pageid reciba una lista de str en caso que cambien varias páginas.
+    def downloader_pages_from_space_md(self, space, pageid=list[str] | None):
+
+        if pageid is not None:
+            try:
+                pages = []
+                for id in pageid:
+                    page = self.confluence.get_page_by_id(id)
+                    pages.append(page)
+            except Exception as e:
+                print(f"Error inesperado: {e}")
+
+        else:
+            pages = self._pages_from_space(space)
 
         for page in pages:
 
             html = page["body"]["storage"]["value"]
-            # meta = page["_expandable"]
-            # print(meta)
 
             content_md = markdownify(html)
 
@@ -35,7 +48,6 @@ class ConfluenceSpaceDocumentDownloader:
             space_id = space_key.split('/')[-1]
 
             metadata = self.confluence.history(page_id)
-            # print(metadata)
 
             output_dir = f"knowledge/confluence/spaces/{space_id}/{page_id}"
 
@@ -49,4 +61,41 @@ class ConfluenceSpaceDocumentDownloader:
             with open(metadatapath, "w", encoding="utf-8") as f:
                 json.dump(metadata, f, ensure_ascii=False, indent=4)
 
-    # def Confuence_Page_history(space, page):
+        # TODO: Creaer la estructura del metadato de el espacio:
+
+    def read_and_update_space(self, spacepath, space):
+
+        # 1. Carga de información desde el metadato del espacio: número del documento y fecha de actualización
+
+        path = f"{spacepath}/EDP/metadata.json"
+        with open(path, "r") as f:
+            data = json.load(f)
+        # Cantidad de páginas:
+        localpages = len(data)
+        # Parejas ordenadas "id": "lastUpdate" del metadato de el space:
+        localpaires = data["pages"]
+
+        # 2. Carga de los datos actuales de las páginas:
+        pairs = {}
+        pages = self._pages_from_space(space)
+        for page in pages:
+            idpage = page["id"]
+            pagehistory = self.confluence.history(idpage)
+            lastUpdate = pagehistory["lastUpdated"]["when"]
+            pairs[idpage] = lastUpdate
+
+        # Comparación entre pares locales y pares obtenidos o actuales:
+
+        if pairs == localpaires:
+            print(f"No hay cambios en el espacio: {space}")
+        else:
+            for pair in pairs:
+                if pair in localpaires:
+                    if pairs[pair] != localpaires[pair]:
+                        print(
+                            f"Ejecutar actualización de la página con id: {pair}")
+                    else:
+                        print(f"No hay cambios en la página con id: {pair}")
+                else:
+                    print(
+                        f"La página con id: {pair} es nueva. Ejecutar actualización para agregarla")
