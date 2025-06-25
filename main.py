@@ -4,6 +4,7 @@ from src.download_page_from_space import ConfluenceSpaceDocumentDownloader
 # from src.confluence_space_listener import dircount
 import os
 from dotenv import load_dotenv
+from apscheduler.schedulers.blocking import BlockingScheduler
 
 load_dotenv()
 
@@ -19,9 +20,16 @@ USERNAME = os.getenv("USERNAME")
 
 descarga = ConfluenceSpaceDocumentDownloader(
     username=USERNAME, token=API_TOKEN, url=CONFLUENCE_URL)
+# prueba = descarga.downloader_pages_from_space_md(space="EDP")
 
+
+scheduler = BlockingScheduler()
+# scheduler.add_job(lambda: descarga.downloader_pages_from_space_md(
+#   space=SPACE_KEY), 'cron', minute=0)
+scheduler.add_job(lambda: descarga.read_and_update_space(
+    spacepath="knowledge/confluence/spaces", space=SPACE_KEY), 'interval', seconds=60)
+
+scheduler.start()
 # prueba = descarga.pages_from_space("EDP")
 # prueba = descarga.read_and_update_space(
 #  spacepath="knowledge/confluence/spaces", space=SPACE_KEY)
-prueba = descarga.downloader_pages_from_space_md(space="EDP")
-print(prueba)
