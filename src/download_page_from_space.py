@@ -31,9 +31,9 @@ class ConfluenceSpaceDocumentDownloader:
             try:
                 pages = []
                 for id in pageid:
-                    page = self.confluence.get_page_by_id(id)
+                    page = self.confluence.get_page_by_id(
+                        id, expand="body.storage")
                     pages.append(page)
-                    print(page)
             except Exception as e:
                 print(f"Error inesperado: {e}")
         else:
