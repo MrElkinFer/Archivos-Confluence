@@ -22,7 +22,7 @@ descarga = ConfluenceSpaceDocumentDownloader(
     username=USERNAME, token=API_TOKEN, url=CONFLUENCE_URL)
 # prueba = descarga.downloader_pages_from_space_md(space="EDP")
 
-
+"""
 scheduler = BlockingScheduler()
 # scheduler.add_job(lambda: descarga.downloader_pages_from_space_md(
 #   space=SPACE_KEY), 'cron', minute=0)
@@ -33,3 +33,6 @@ scheduler.start()
 # prueba = descarga.pages_from_space("EDP")
 # prueba = descarga.read_and_update_space(
 #  spacepath="knowledge/confluence/spaces", space=SPACE_KEY)
+
+"""
+descarga.prueba()
