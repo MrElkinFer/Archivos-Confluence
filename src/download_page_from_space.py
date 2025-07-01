@@ -6,8 +6,6 @@ from datetime import datetime, timezone
 
 
 # TODO: si son mas de 20 páginas cargar por partes para no saturar
-
-
 class ConfluenceSpaceDocumentDownloader:
 
     def __init__(self, url, username, token):
@@ -27,7 +25,10 @@ class ConfluenceSpaceDocumentDownloader:
         )
         return pages
 
+    # Descarga todas las páginas de un espacio específico de confluence y las guarda en una carpeta en local en formato markdown
     def downloader_pages_from_space_md(self, space, pageid: list[str] | None = None):
+
+        space_root_path = f"knowledge/confluence/spaces/"
 
         if pageid is not None:
             try:
@@ -40,9 +41,8 @@ class ConfluenceSpaceDocumentDownloader:
                 print(f"Error inesperado: {e}")
         else:
             pages = self._pages_from_space(space)
-            # Aquí va el metadato del espacio nuevo
+            self._space_metadata(space=space, path=space_root_path)
         pagesid = []
-        space_root_path = f"knowledge/confluence/spaces/"
 
         for page in pages:
 
@@ -67,15 +67,14 @@ class ConfluenceSpaceDocumentDownloader:
         self._space_metadata(path=space_root_path,
                              space=space, pagesid=pagesid)
 
+    # Envía petición para verificar cambios en el espacio. Si hay cambios actualiza en local
     def read_and_update_space(self, spacepath, space):
 
         # 1. Carga de información desde el metadato del espacio: número del documento y fecha de actualización
-        path = f"{spacepath}/EDP/space_metadata.json"
+        path = f"{spacepath}/{space}/space_metadata.json"
         with open(path, "r") as f:
             data = json.load(f)
-        # Cantidad de páginas:
-        localpages = len(data)
-        # Parejas ordenadas "id": "lastUpdate" del metadato de el space:
+        # Parejas ordenadas "id": "lastUpdate" del metadato en el space:
         localpaires = data["pages"]
 
         # 2. Carga de los datos actuales de las páginas:
@@ -100,7 +99,8 @@ class ConfluenceSpaceDocumentDownloader:
             if newpairs is not None and deletepairs is not None:
                 self.downloader_pages_from_space_md(
                     space=space, pageid=newpairs)
-                print("L94 nuevas páginas y crear en carpeta para las borradas")
+                print(
+                    "L94 nuevas páginas y crear registro en metadato del espacio para las borradas")
             elif newpairs is not None:
                 self.downloader_pages_from_space_md(
                     space=space, pageid=newpairs)
@@ -108,50 +108,45 @@ class ConfluenceSpaceDocumentDownloader:
             else:
                 print("L100: crear en carpeta para las borradas")
 
-    # Creación y actualización del metadato del espacio en Confluence:
-    def _space_metadata(self, path: str, space: str, pagesid: list[str]):
-        # TODO si el archivo no existe / actualización del archivo
-        # Lectura de las claves ID y valores Lastupdate: de los metadatos de cada page para el registro en pages
-        # Lectura de la fecha de última actualización:
-        lastupdatepages = []
-
+    # Creación y actualización del metadato del espacio en Confluence en local:
+    def _space_metadata(self, path: str, space: str, pagesid: list[str] | None = None):
+        # Ruta del archivo
+        file_path = f"{path}/{space}"
+        # Creación de la ruta del archivo vacío
+        file = os.path.join(file_path, "space_metadata.json")
+        # verificación de la existencia del archivo space_metadata.json:
+        update = os.path.isfile(file)
+        # fecha en formato ISO 8601 y 'Z' al final
+        ahora = datetime.now(timezone.utc)
+        iso_time = ahora.isoformat(
+            timespec='milliseconds').replace('+00:00', 'Z')
+        # Estructura del ARCHIVO NUEVO SOLAMENTE
+        if update:
+            with open(file, "r", encoding="utf-8") as f:
+                spacedata = json.load(f)
+            version = spacedata["version"]
+            version += 1
+            spacedata["version"] = version
+            spacedata["when"] = iso_time
+            spacedata["name"] = space
+            # spacedata["updates"] #Campo para el registro de cambios
+        else:
+            spacedata = {
+                "name": f"{space}",
+                "version": 1,
+                "when": f"{iso_time}",
+                "pages": {}
+            }
+        # Lectura de la fecha de última ACTUALIZACIÓN de la página:
         for id in pagesid:
             page_path = f"{path}/{space}/{id}"
             metadatapath = os.path.join(page_path, "metadata.json")
             with open(metadatapath, "r") as f:
                 # captura de los datos del metadato de cada page
                 data = json.load(f)
-            lastupdatepages.append(data["lastUpdated"]["when"])
-        # fecha en formato ISO 8601 y 'Z' al final
-        ahora = datetime.now(timezone.utc)
-        iso_time = ahora.isoformat(
-            timespec='milliseconds').replace('+00:00', 'Z')
-        # Estructura del archivo nuevo
-        spacedata = {
-            "name": f"{space}",
-            "version": 0,
-            "when": f"{iso_time}",
-            "pages": {}
-        }
+            # Ingresando los pares clave-valor a el archivo spacedata:
+            spacedata["pages"][id] = data["lastUpdated"]["when"]
 
-        # Ruta del archivo
-        file_path = f"{path}/{space}"
-        # Cración del archivo vacío
-        file = os.path.join(file_path, "metadata.json")
-
+            # Guardando el metadato
         with open(file, "w", encoding="utf-8") as f:
             json.dump(spacedata, f, ensure_ascii=False, indent=4)
-
-    def prueba(self):
-        """Insertando la hora de registro
-        ahora = datetime.now(timezone.utc)
-        # fecha en formato ISO 8601 y 'Z' al final: ejemplo 2025-06-19T16:20:05.386Z
-        date_iso = ahora.isoformat(
-            timespec='milliseconds').replace('+00:00', 'Z')
-        print(date_iso)"""
-        """Funciónes dentro de funciones
-        a = "función externa"
-
-        def funcioninterna():
-            print(a)
-        funcioninterna()"""
