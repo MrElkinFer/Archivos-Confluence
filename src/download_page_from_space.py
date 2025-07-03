@@ -15,7 +15,7 @@ class ConfluenceSpaceDocumentDownloader:
             password=token,
         )
 
-    # TODO Cargar una cantidad de páginas en ciclo si hay mas de 100 por cargar.
+    # Descarga las páginas de un espacio determinado
     def _pages_from_space(self, space: str, start=0, limit=100):
         pages = self.confluence.get_all_pages_from_space(
             space=space,
@@ -25,27 +25,28 @@ class ConfluenceSpaceDocumentDownloader:
         )
         return pages
 
-    # Descarga todas las páginas de un espacio específico de confluence y las guarda en una carpeta en local en formato markdown
+    # Guarda las páginas en una carpeta local en formato markdown
     def downloader_pages_from_space_md(self, space, pageid: list[str] | None = None):
 
         space_root_path = f"knowledge/confluence/spaces/"
+        pagesid = []
 
+        # Sí llega pageid descarga solo el contenido "body.storage.value" en get_page_by_id
         if pageid is not None:
             try:
                 for id in pageid:
                     page = self.confluence.get_page_by_id(
                         id, expand="body.storage")
                     pages.append(page)
-                # Aquí va el metadato para actualizar (/crear si se eliminó)
             except Exception as e:
                 print(f"Error inesperado: {e}")
+        # Si no llega pageid se asume que se debe descargar todos los archivos del espacio
         else:
             pages = self._pages_from_space(space)
             self._space_metadata(space=space, path=space_root_path)
-        pagesid = []
 
+        # Se genera cada página obtenida en "pages" en formato markdown
         for page in pages:
-
             html = page["body"]["storage"]["value"]
             content_md = markdownify(html)
             page_id = page["id"]
@@ -62,22 +63,28 @@ class ConfluenceSpaceDocumentDownloader:
             with open(metadatapath, "w", encoding="utf-8") as f:
                 json.dump(metadata, f, ensure_ascii=False, indent=4)
 
-        # TODO: Creaer la estructura del metadato de el espacio:
-
+        # Creación del metadato del espacio
         self._space_metadata(path=space_root_path,
-                             space=space, pagesid=pagesid)
+                             space=space, pagesid=pageid)
 
-    # Envía petición para verificar cambios en el espacio. Si hay cambios actualiza en local
-    def read_and_update_space(self, spacepath, space):
+    # Envía petición para verificar cambios en un espacio. Si hay cambios actualiza en local
+    def read_and_update_space(self, localpath, space):
 
         # 1. Carga de información desde el metadato del espacio: número del documento y fecha de actualización
-        path = f"{spacepath}/{space}/space_metadata.json"
-        with open(path, "r") as f:
-            data = json.load(f)
-        # Parejas ordenadas "id": "lastUpdate" del metadato en el space:
-        localpaires = data["pages"]
+        try:
+            path = f"{localpath}/{space}/space_metadata.json"
+            with open(path, "r") as f:
+                data = json.load(f)
+                # Parejas ordenadas "id": "lastUpdate" del metadato en el space:
+            localpaires = data["pages"]
+        except FileNotFoundError:
+            print(
+                f"El directorio o espacio indicados no existen\n   Directorio: {localpath}\n   Espacio: {space}\n\n")
+        except FileExistsError:
+            print(
+                f"El directorio o espacio indicados no existen\n   Directorio: {localpath}\n   Espacio: {space}\n\n")
 
-        # 2. Carga de los datos actuales de las páginas:
+        # 2. Carga de los datos actuales de las páginas en linea:
         pairs = {}
         pages = self._pages_from_space(space)
         for page in pages:
@@ -86,29 +93,31 @@ class ConfluenceSpaceDocumentDownloader:
             lastUpdate = pagehistory["lastUpdated"]["when"]
             pairs[idpage] = lastUpdate
 
-        # Comparación entre pares locales y pares obtenidos o actuales:
-
+        # 3. Comparación entre pares locales y pares obtenidos o actuales en linea:
         if pairs == localpaires:
-            print(f"L84: No hay cambios en el espacio: {space}")
+            print(f"L98: No hay cambios en el espacio: {space}")
         else:
+            # fecha en formato ISO 8601 y 'Z' al final
+            ahora = datetime.now(timezone.utc)
+            iso_time = ahora.isoformat(
+                timespec='milliseconds').replace('+00:00', 'Z')
             # lista de id de las páginas que no están en local (páginas nuevas)
             newpairs = list(set(pairs.keys())-set(localpaires.keys()))
-            # TODO Marcar en el metadato que la página fue eliminada de confluence y crear método para guardar en carpeta eliminados con su nota en metadato
+            # lista de id de las páginas que fueron eliminadas en confluence
             deletepairs = list(set(localpaires.keys())-set(pairs.keys()))
-
-            if newpairs is not None and deletepairs is not None:
+            if newpairs:
+                for new in newpairs:
+                    data["updates"] = f"UPDATE - {iso_time}"
+                # En caso de que se creen y borren páginas en el espacio
                 self.downloader_pages_from_space_md(
                     space=space, pageid=newpairs)
-                print(
-                    "L94 nuevas páginas y crear registro en metadato del espacio para las borradas")
-            elif newpairs is not None:
-                self.downloader_pages_from_space_md(
-                    space=space, pageid=newpairs)
-                print("L98: Ejecutando solo nuevos pares")
-            else:
-                print("L100: crear en carpeta para las borradas")
+            if deletepairs:
+                for deleted in deletepairs:
+                    del data["pages"][deleted]
+                    data["updates"][deleted] = f"DELETE - {iso_time}"
 
-    # Creación y actualización del metadato del espacio en Confluence en local:
+    # Creación y actualización del metadato del espacio:
+
     def _space_metadata(self, path: str, space: str, pagesid: list[str] | None = None):
         # Ruta del archivo
         file_path = f"{path}/{space}"
@@ -120,7 +129,8 @@ class ConfluenceSpaceDocumentDownloader:
         ahora = datetime.now(timezone.utc)
         iso_time = ahora.isoformat(
             timespec='milliseconds').replace('+00:00', 'Z')
-        # Estructura del ARCHIVO NUEVO SOLAMENTE
+
+        # En caso de actualización:
         if update:
             with open(file, "r", encoding="utf-8") as f:
                 spacedata = json.load(f)
@@ -129,15 +139,20 @@ class ConfluenceSpaceDocumentDownloader:
             spacedata["version"] = version
             spacedata["when"] = iso_time
             spacedata["name"] = space
-            # spacedata["updates"] #Campo para el registro de cambios
+            updatedref = "UPDATE"
+
+        # Esquema del metadato en caso de espacio nuevo
         else:
             spacedata = {
                 "name": f"{space}",
                 "version": 1,
                 "when": f"{iso_time}",
-                "pages": {}
+                "pages": {},
+                "updates": {}
             }
-        # Lectura de la fecha de última ACTUALIZACIÓN de la página:
+            updatedref = "REGISTER"
+
+        # Escritura de los pares "ID: LastUpdated.when"
         for id in pagesid:
             page_path = f"{path}/{space}/{id}"
             metadatapath = os.path.join(page_path, "metadata.json")
@@ -146,7 +161,11 @@ class ConfluenceSpaceDocumentDownloader:
                 data = json.load(f)
             # Ingresando los pares clave-valor a el archivo spacedata:
             spacedata["pages"][id] = data["lastUpdated"]["when"]
+            spacedata["updates"][id] = f"{updatedref} - {iso_time}"
 
-            # Guardando el metadato
+            # Guardando el metadato del espacio
         with open(file, "w", encoding="utf-8") as f:
             json.dump(spacedata, f, ensure_ascii=False, indent=4)
+
+    # Se encarga de actualizar escribir el id: "Cambio - LastUpdate"
+    def _writer_update(self, )
