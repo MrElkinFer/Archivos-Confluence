@@ -26,7 +26,7 @@ class ConfluenceSpaceDocumentDownloader:
         return pages
 
     # Guarda las páginas en una carpeta local en formato markdown
-    def downloader_pages_from_space_md(self, space, pageid: list[str] | None = None):
+    def Downloader_pages_from_space_md(self, space, pageid: list[str] | None = None):
 
         space_root_path = f"knowledge/confluence/spaces/"
         pagesid = []
@@ -68,7 +68,8 @@ class ConfluenceSpaceDocumentDownloader:
                              space=space, pagesid=pageid)
 
     # Envía petición para verificar cambios en un espacio. Si hay cambios actualiza en local
-    def read_and_update_space(self, localpath, space):
+    def Read_and_update_space(self, localpath, space):
+        localpaires = None
 
         # 1. Carga de información desde el metadato del espacio: número del documento y fecha de actualización
         try:
@@ -109,7 +110,7 @@ class ConfluenceSpaceDocumentDownloader:
                 for new in newpairs:
                     data["updates"] = f"UPDATE - {iso_time}"
                 # En caso de que se creen y borren páginas en el espacio
-                self.downloader_pages_from_space_md(
+                self.Downloader_pages_from_space_md(
                     space=space, pageid=newpairs)
             if deletepairs:
                 for deleted in deletepairs:
@@ -117,7 +118,6 @@ class ConfluenceSpaceDocumentDownloader:
                     data["updates"][deleted] = f"DELETE - {iso_time}"
 
     # Creación y actualización del metadato del espacio:
-
     def _space_metadata(self, path: str, space: str, pagesid: list[str] | None = None):
         # Ruta del archivo
         file_path = f"{path}/{space}"
@@ -166,6 +166,3 @@ class ConfluenceSpaceDocumentDownloader:
             # Guardando el metadato del espacio
         with open(file, "w", encoding="utf-8") as f:
             json.dump(spacedata, f, ensure_ascii=False, indent=4)
-
-    # Se encarga de actualizar escribir el id: "Cambio - LastUpdate"
-    def _writer_update(self, )

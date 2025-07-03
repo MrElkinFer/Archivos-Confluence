@@ -1,1 +1,0 @@
-Elkin Fernado Arismendy Torres
