@@ -43,7 +43,8 @@ class ConfluenceSpaceDocumentDownloader:
         # Si no llega pageid se asume que se debe descargar todos los archivos del espacio
         else:
             pages = self._pages_from_space(space)
-            self._space_metadata(space=space, path=space_root_path)
+            for page in pages:
+                pagesid.append(page["id"])
 
         # Se genera cada página obtenida en "pages" en formato markdown
         for page in pages:
@@ -65,7 +66,7 @@ class ConfluenceSpaceDocumentDownloader:
 
         # Creación del metadato del espacio
         self._space_metadata(path=space_root_path,
-                             space=space, pagesid=pageid)
+                             space=space, pagesid=pagesid)
 
     # Envía petición para verificar cambios en un espacio. Si hay cambios actualiza en local
     def Read_and_update_space(self, localpath, space):
@@ -79,11 +80,12 @@ class ConfluenceSpaceDocumentDownloader:
                 # Parejas ordenadas "id": "lastUpdate" del metadato en el space:
             localpaires = data["pages"]
         except FileNotFoundError:
-            print(
-                f"El directorio o espacio indicados no existen\n   Directorio: {localpath}\n   Espacio: {space}\n\n")
+
+            return print(
+                f"El directorio o espacio indicados no existen\n   Directorio: {localpath}\n   Espacio: {space}")
         except FileExistsError:
-            print(
-                f"El directorio o espacio indicados no existen\n   Directorio: {localpath}\n   Espacio: {space}\n\n")
+            return print(
+                f"El directorio o espacio indicados no existen\n   Directorio: {localpath}\n   Espacio: {space}")
 
         # 2. Carga de los datos actuales de las páginas en linea:
         pairs = {}
@@ -156,7 +158,7 @@ class ConfluenceSpaceDocumentDownloader:
         for id in pagesid:
             page_path = f"{path}/{space}/{id}"
             metadatapath = os.path.join(page_path, "metadata.json")
-            with open(metadatapath, "r") as f:
+            with open(metadatapath, "r", encoding="utf-8") as f:
                 # captura de los datos del metadato de cada page
                 data = json.load(f)
             # Ingresando los pares clave-valor a el archivo spacedata:

@@ -20,9 +20,9 @@ USERNAME = os.getenv("USERNAME")
 
 descarga = ConfluenceSpaceDocumentDownloader(
     username=USERNAME, token=API_TOKEN, url=CONFLUENCE_URL)
-# pruebadownload = descarga.Downloader_pages_from_space_md(space="EDP")
-pruebaupdate = descarga.Read_and_update_space(
-    localpath="knowledge/confluence/spaces", space=SPACE_KEY)
+pruebadownload = descarga.Downloader_pages_from_space_md(space="EDP")
+"""pruebaupdate = descarga.Read_and_update_space(
+    localpath="knowledge/confluence/spaces", space=SPACE_KEY)"""
 
 """
 scheduler = BlockingScheduler()
