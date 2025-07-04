@@ -30,6 +30,7 @@ class ConfluenceSpaceDocumentDownloader:
 
         space_root_path = f"knowledge/confluence/spaces/"
         pagesid = []
+        pages = []
 
         # Sí llega pageid descarga solo el contenido "body.storage.value" en get_page_by_id
         if pageid is not None:
@@ -38,6 +39,8 @@ class ConfluenceSpaceDocumentDownloader:
                     page = self.confluence.get_page_by_id(
                         id, expand="body.storage")
                     pages.append(page)
+                ref = pages["id"]  # Borrar
+                print(ref)  # Borrar
             except Exception as e:
                 print(f"Error inesperado: {e}")
         # Si no llega pageid se asume que se debe descargar todos los archivos del espacio
@@ -104,20 +107,34 @@ class ConfluenceSpaceDocumentDownloader:
             ahora = datetime.now(timezone.utc)
             iso_time = ahora.isoformat(
                 timespec='milliseconds').replace('+00:00', 'Z')
+
+            updatedkeys = {}
+            keys = set(pairs.keys())
+            localkeys = set(localpaires.keys())
+
             # lista de id de las páginas que no están en local (páginas nuevas)
-            newpairs = list(set(pairs.keys())-set(localpaires.keys()))
+            newpairs = list(keys-localkeys)
+
             # lista de id de las páginas que fueron eliminadas en confluence
-            deletepairs = list(set(localpaires.keys())-set(pairs.keys()))
+            deletepairs = list(localkeys-keys)
+
             if newpairs:
-                for new in newpairs:
-                    data["updates"] = f"UPDATE - {iso_time}"
-                # En caso de que se creen y borren páginas en el espacio
+                for news in newpairs:
+                    data["updates"][news] = f"REGISTER - {iso_time}"
                 self.Downloader_pages_from_space_md(
                     space=space, pageid=newpairs)
+
             if deletepairs:
                 for deleted in deletepairs:
                     del data["pages"][deleted]
                     data["updates"][deleted] = f"DELETE - {iso_time}"
+
+            for id in pairs:
+                if id in localpaires and pairs[id] != localpaires[id]:
+                    updatedkeys[id] = pairs[id]
+                    self.Downloader_pages_from_space_md(
+                        space=space, pageid=updatedkeys)
+                    data["updates"][id] = f"UPDATED - {iso_time}"
 
     # Creación y actualización del metadato del espacio:
     def _space_metadata(self, path: str, space: str, pagesid: list[str] | None = None):
@@ -161,6 +178,9 @@ class ConfluenceSpaceDocumentDownloader:
             with open(metadatapath, "r", encoding="utf-8") as f:
                 # captura de los datos del metadato de cada page
                 data = json.load(f)
+            # En caso de que el archivo meatadato del espacio exista pero se agrege una página nueva:
+            if update and id not in data:
+                updatedref = "REGISTER"
             # Ingresando los pares clave-valor a el archivo spacedata:
             spacedata["pages"][id] = data["lastUpdated"]["when"]
             spacedata["updates"][id] = f"{updatedref} - {iso_time}"
