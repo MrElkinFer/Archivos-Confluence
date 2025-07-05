@@ -34,15 +34,12 @@ class ConfluenceSpaceDocumentDownloader:
 
         # Sí llega pageid descarga solo el contenido "body.storage.value" en get_page_by_id
         if pageid is not None:
-            try:
-                for id in pageid:
-                    page = self.confluence.get_page_by_id(
-                        id, expand="body.storage")
-                    pages.append(page)
-                ref = pages["id"]  # Borrar
-                print(ref)  # Borrar
-            except Exception as e:
-                print(f"Error inesperado: {e}")
+            for id in pageid:
+                page = self.confluence.get_page_by_id(
+                    id, expand="body.storage")
+                pages.append(page)
+                # TODO revisar en caso de actualización
+
         # Si no llega pageid se asume que se debe descargar todos los archivos del espacio
         else:
             pages = self._pages_from_space(space)
@@ -101,7 +98,7 @@ class ConfluenceSpaceDocumentDownloader:
 
         # 3. Comparación entre pares locales y pares obtenidos o actuales en linea:
         if pairs == localpaires:
-            print(f"L98: No hay cambios en el espacio: {space}")
+            print(f"L101: No hay cambios en el espacio: {space}")
         else:
             # fecha en formato ISO 8601 y 'Z' al final
             ahora = datetime.now(timezone.utc)
@@ -120,23 +117,30 @@ class ConfluenceSpaceDocumentDownloader:
 
             if newpairs:
                 for news in newpairs:
-                    data["updates"][news] = f"REGISTER - {iso_time}"
+                    if news not in newpairs["updates"]:
+                        newpairs["updates"][news] = []
+                        data["updates"][news].append(f"REGISTER - {iso_time}")
                 self.Downloader_pages_from_space_md(
                     space=space, pageid=newpairs)
 
             if deletepairs:
                 for deleted in deletepairs:
                     del data["pages"][deleted]
-                    data["updates"][deleted] = f"DELETE - {iso_time}"
+                    if deleted not in data["updates"]:
+                        data["updates"][deleted] = []
+                    data["updates"][deleted].append(f"DELETE - {iso_time}")
 
             for id in pairs:
                 if id in localpaires and pairs[id] != localpaires[id]:
+                    if id not in data["updates"]:
+                        data["updates"][id] = []
+                    data["updates"][id].append(f"UPDATED - {iso_time}")
                     updatedkeys[id] = pairs[id]
                     self.Downloader_pages_from_space_md(
                         space=space, pageid=updatedkeys)
-                    data["updates"][id] = f"UPDATED - {iso_time}"
 
     # Creación y actualización del metadato del espacio:
+
     def _space_metadata(self, path: str, space: str, pagesid: list[str] | None = None):
         # Ruta del archivo
         file_path = f"{path}/{space}"
@@ -183,8 +187,13 @@ class ConfluenceSpaceDocumentDownloader:
                 updatedref = "REGISTER"
             # Ingresando los pares clave-valor a el archivo spacedata:
             spacedata["pages"][id] = data["lastUpdated"]["when"]
-            spacedata["updates"][id] = f"{updatedref} - {iso_time}"
+            if id not in spacedata["updates"]:
+                spacedata["updates"][id] = []
+            spacedata["updates"][id].append(f"{updatedref} - {iso_time}")
 
             # Guardando el metadato del espacio
         with open(file, "w", encoding="utf-8") as f:
             json.dump(spacedata, f, ensure_ascii=False, indent=4)
+
+
+# TODO doble registro en la lista de update, que todo lo del metadato del espacio se maneje desde la función _space_metadata
