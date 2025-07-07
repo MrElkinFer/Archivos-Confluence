@@ -88,14 +88,14 @@ class ConfluenceSpaceDocumentDownloader:
 
         # 2. Carga de los datos actuales de las páginas en linea:
         pairs = {}
-
         createdAt = {}
+
         pages = self._pages_from_space(space)
         for page in pages:
             idpage = page["id"]
             pagehistory = self.confluence.history(idpage)
             lastUpdate = pagehistory["lastUpdated"]["when"]
-            createdAt[page] = pagehistory["createdDate"]
+            createdAt[idpage] = pagehistory["createdDate"]
             pairs[idpage] = lastUpdate
 
         # 3. Comparación entre pares locales y pares obtenidos o actuales en linea:
