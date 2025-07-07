@@ -38,7 +38,7 @@ class ConfluenceSpaceDocumentDownloader:
                 page = self.confluence.get_page_by_id(
                     id, expand="body.storage")
                 pages.append(page)
-                # TODO revisar en caso de actualización
+                pagesid.append(id)
 
         # Si no llega pageid se asume que se debe descargar todos los archivos del espacio
         else:
@@ -51,7 +51,7 @@ class ConfluenceSpaceDocumentDownloader:
             html = page["body"]["storage"]["value"]
             content_md = markdownify(html)
             page_id = page["id"]
-            pagesid.append(page_id)
+            # pagesid.append(page_id)
             space_key = page["_expandable"]["space"]
             space_id = space_key.split('/')[-1]
             metadata = self.confluence.history(page_id)
@@ -80,7 +80,6 @@ class ConfluenceSpaceDocumentDownloader:
                 # Parejas ordenadas "id": "lastUpdate" del metadato en el space:
             localpaires = data["pages"]
         except FileNotFoundError:
-
             return print(
                 f"El directorio o espacio indicados no existen\n   Directorio: {localpath}\n   Espacio: {space}")
         except FileExistsError:
@@ -100,12 +99,8 @@ class ConfluenceSpaceDocumentDownloader:
         if pairs == localpaires:
             print(f"L101: No hay cambios en el espacio: {space}")
         else:
-            # fecha en formato ISO 8601 y 'Z' al final
-            ahora = datetime.now(timezone.utc)
-            iso_time = ahora.isoformat(
-                timespec='milliseconds').replace('+00:00', 'Z')
 
-            updatedkeys = {}
+            updatedkeys = []
             keys = set(pairs.keys())
             localkeys = set(localpaires.keys())
 
@@ -119,7 +114,9 @@ class ConfluenceSpaceDocumentDownloader:
                 for news in newpairs:
                     if news not in newpairs["updates"]:
                         newpairs["updates"][news] = []
-                        data["updates"][news].append(f"REGISTER - {iso_time}")
+                        # TODO Pasar el registro en updates del metadato del espacio a la función de metadato de espacio
+                        data["updates"][news].append(
+                            f"L121 REGISTER - {self._iso_time()}")
                 self.Downloader_pages_from_space_md(
                     space=space, pageid=newpairs)
 
@@ -128,19 +125,23 @@ class ConfluenceSpaceDocumentDownloader:
                     del data["pages"][deleted]
                     if deleted not in data["updates"]:
                         data["updates"][deleted] = []
-                    data["updates"][deleted].append(f"DELETE - {iso_time}")
+                    data["updates"][deleted].append(
+                        f"DELETE - {self._iso_time()}")
 
             for id in pairs:
                 if id in localpaires and pairs[id] != localpaires[id]:
                     if id not in data["updates"]:
                         data["updates"][id] = []
-                    data["updates"][id].append(f"UPDATED - {iso_time}")
-                    updatedkeys[id] = pairs[id]
-                    self.Downloader_pages_from_space_md(
-                        space=space, pageid=updatedkeys)
+                    data["updates"][id].append(
+                        f"L136 UPDATED - {self._iso_time()}")
+                    updatedkeys.append(id)
+                self.Downloader_pages_from_space_md(
+                    space=space, pageid=updatedkeys)
+
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=4)
 
     # Creación y actualización del metadato del espacio:
-
     def _space_metadata(self, path: str, space: str, pagesid: list[str] | None = None):
         # Ruta del archivo
         file_path = f"{path}/{space}"
@@ -148,10 +149,6 @@ class ConfluenceSpaceDocumentDownloader:
         file = os.path.join(file_path, "space_metadata.json")
         # verificación de la existencia del archivo space_metadata.json:
         update = os.path.isfile(file)
-        # fecha en formato ISO 8601 y 'Z' al final
-        ahora = datetime.now(timezone.utc)
-        iso_time = ahora.isoformat(
-            timespec='milliseconds').replace('+00:00', 'Z')
 
         # En caso de actualización:
         if update:
@@ -160,20 +157,21 @@ class ConfluenceSpaceDocumentDownloader:
             version = spacedata["version"]
             version += 1
             spacedata["version"] = version
-            spacedata["when"] = iso_time
+            spacedata["last_update"] = self._iso_time()
             spacedata["name"] = space
-            updatedref = "UPDATE"
+            updatedref = "L162 UPDATE"
 
         # Esquema del metadato en caso de espacio nuevo
         else:
+            # TODO agregar la fecha de creación del archivo desde este punto
             spacedata = {
                 "name": f"{space}",
                 "version": 1,
-                "when": f"{iso_time}",
+                "when": f"{self._iso_time()}",
                 "pages": {},
                 "updates": {}
             }
-            updatedref = "REGISTER"
+            updatedref = "L178 REGISTER"
 
         # Escritura de los pares "ID: LastUpdated.when"
         for id in pagesid:
@@ -183,17 +181,36 @@ class ConfluenceSpaceDocumentDownloader:
                 # captura de los datos del metadato de cada page
                 data = json.load(f)
             # En caso de que el archivo meatadato del espacio exista pero se agrege una página nueva:
+
+            # si no son páginas nuevas guardar fecha de creación de cada una
+            if update == False:
+                if id not in spacedata["updates"]:
+                    spacedata["updates"][id] = []
+                spacedata["updates"][id].append(
+                    f"CREATED - {data["createdDate"]}")
+
             if update and id not in data:
-                updatedref = "REGISTER"
+                if id not in spacedata["updates"]:
+                    spacedata["updates"][id] = []
+                # Agregando la fecha de creación de la página
+                spacedata["updates"][id].append(
+                    f"CREATED - {data["createdDate"]}")
+                updatedref = "L189 REGISTER"
             # Ingresando los pares clave-valor a el archivo spacedata:
             spacedata["pages"][id] = data["lastUpdated"]["when"]
             if id not in spacedata["updates"]:
                 spacedata["updates"][id] = []
-            spacedata["updates"][id].append(f"{updatedref} - {iso_time}")
+            spacedata["updates"][id].append(
+                f"{updatedref} - {self._iso_time()}")
 
             # Guardando el metadato del espacio
         with open(file, "w", encoding="utf-8") as f:
             json.dump(spacedata, f, ensure_ascii=False, indent=4)
 
-
-# TODO doble registro en la lista de update, que todo lo del metadato del espacio se maneje desde la función _space_metadata
+    # Función encargada de dar fecha del momento que se llama
+    def _iso_time(self) -> str:
+        # fecha en formato ISO 8601 y 'Z' al final
+        ahora = datetime.now(timezone.utc)
+        iso_time = ahora.isoformat(
+            timespec='milliseconds').replace('+00:00', 'Z')
+        return iso_time

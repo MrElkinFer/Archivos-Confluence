@@ -21,11 +21,11 @@ USERNAME = os.getenv("USERNAME")
 descarga = ConfluenceSpaceDocumentDownloader(
     username=USERNAME, token=API_TOKEN, url=CONFLUENCE_URL)
 # Descarga y guardado de todos las páginas de un espacio en Confluence en formato markdown
-downloadPagesFromSpace = descarga.Downloader_pages_from_space_md(space="EDP")
+# downloadPagesFromSpace = descarga.Downloader_pages_from_space_md(space="EDP")
 
 # Actualización en local de las páginas de un espacio en Confluence
-# pruebaupdate = descarga.Read_and_update_space(
-#   localpath="knowledge/confluence/spaces", space=SPACE_KEY)
+pruebaupdate = descarga.Read_and_update_space(
+    localpath="knowledge/confluence/spaces", space=SPACE_KEY)
 
 """
 scheduler = BlockingScheduler()
