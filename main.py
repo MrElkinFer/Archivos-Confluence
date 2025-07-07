@@ -1,7 +1,4 @@
-# from src.descarga import ConfluenceDownloader
-# from src.descarga import ConfluenceDownloader
 from src.download_page_from_space import ConfluenceSpaceDocumentDownloader
-# from src.confluence_space_listener import dircount
 import os
 from dotenv import load_dotenv
 from apscheduler.schedulers.blocking import BlockingScheduler
@@ -24,10 +21,10 @@ descarga = ConfluenceSpaceDocumentDownloader(
 # downloadPagesFromSpace = descarga.Downloader_pages_from_space_md(space="EDP")
 
 # Actualización en local de las páginas de un espacio en Confluence
-pruebaupdate = descarga.Read_and_update_space(
-    localpath="knowledge/confluence/spaces", space=SPACE_KEY)
+# updatePages = descarga.Read_and_update_space(
+#    localpath="knowledge/confluence/spaces", space=SPACE_KEY)
 
-"""
+
 scheduler = BlockingScheduler()
 
 # scheduler.add_job(lambda: descarga.downloader_pages_from_space_md(
@@ -39,5 +36,3 @@ scheduler.start()
 # prueba = descarga.pages_from_space("EDP")
 # prueba = descarga.read_and_update_space(
 #  spacepath="knowledge/confluence/spaces", space=SPACE_KEY)
-
-"""

@@ -6,7 +6,6 @@ import shutil
 from datetime import datetime, timezone
 
 
-# TODO: si son mas de 20 páginas cargar por partes para no saturar
 class ConfluenceSpaceDocumentDownloader:
 
     def __init__(self, url, username, token):
@@ -118,9 +117,9 @@ class ConfluenceSpaceDocumentDownloader:
                     if news not in data["updates"]:
                         data["updates"][news] = []
                     data["updates"][news].append(
-                        f"L120 CREATED - {createdAt[news]}")
+                        f"CREATED - {createdAt[news]}")
                     data["updates"][news].append(
-                        f"L121 REGISTER - {pairs[news]}")
+                        f"REGISTER - {pairs[news]}")
                     data["pages"][news] = pairs[news]
                 self.Downloader_pages_from_space_md(
                     space=space, pageid=newpairs)
@@ -140,7 +139,7 @@ class ConfluenceSpaceDocumentDownloader:
                     if id not in data["updates"]:
                         data["updates"][id] = []
                     data["updates"][id].append(
-                        f"L136 UPDATED - {pairs[id]}")
+                        f"UPDATED - {pairs[id]}")
                     # Guarda la actualización de la pareja ID y lastUpdate en el metadato del espacio:
                     data["pages"][id] = pairs[id]
                     updatedkeys.append(id)
@@ -194,9 +193,9 @@ class ConfluenceSpaceDocumentDownloader:
                 if id not in spacedata["updates"]:
                     spacedata["updates"][id] = []
                 spacedata["updates"][id].append(
-                    f"L190 CREATED - {data["createdDate"]}")
+                    f"CREATED - {data["createdDate"]}")
                 spacedata["updates"][id].append(
-                    f"L196 REGISTER - {self._iso_time()}")
+                    f"REGISTER - {self._iso_time()}")
                 spacedata["pages"][id] = data["lastUpdated"]["when"]
 
         # Guardando el metadato del espacio
