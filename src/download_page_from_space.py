@@ -2,6 +2,7 @@ from atlassian import Confluence
 from markdownify import markdownify
 import os
 import json
+import shutil
 from datetime import datetime, timezone
 
 
@@ -51,7 +52,6 @@ class ConfluenceSpaceDocumentDownloader:
             html = page["body"]["storage"]["value"]
             content_md = markdownify(html)
             page_id = page["id"]
-            # pagesid.append(page_id)
             space_key = page["_expandable"]["space"]
             space_id = space_key.split('/')[-1]
             metadata = self.confluence.history(page_id)
@@ -88,11 +88,13 @@ class ConfluenceSpaceDocumentDownloader:
 
         # 2. Carga de los datos actuales de las páginas en linea:
         pairs = {}
+        createdAt = {}
         pages = self._pages_from_space(space)
         for page in pages:
             idpage = page["id"]
             pagehistory = self.confluence.history(idpage)
             lastUpdate = pagehistory["lastUpdated"]["when"]
+            createdAt[page] = pagehistory["createdDate"]
             pairs[idpage] = lastUpdate
 
         # 3. Comparación entre pares locales y pares obtenidos o actuales en linea:
@@ -112,16 +114,19 @@ class ConfluenceSpaceDocumentDownloader:
 
             if newpairs:
                 for news in newpairs:
-                    if news not in newpairs["updates"]:
-                        newpairs["updates"][news] = []
-                        # TODO Pasar el registro en updates del metadato del espacio a la función de metadato de espacio
-                        data["updates"][news].append(
-                            f"L121 REGISTER - {self._iso_time()}")
+                    if news not in data["updates"]:
+                        data["updates"][news] = []
+                    data["updates"][news].append(
+                        f"L120 CREATED - {createdAt[news]}")
+                    data["updates"][news].append(
+                        f"L121 REGISTER - {pairs[news]}")
                 self.Downloader_pages_from_space_md(
                     space=space, pageid=newpairs)
 
             if deletepairs:
                 for deleted in deletepairs:
+                    pagepath = f"{localpath}/{space}/{deleted}"
+                    shutil.rmtree(path=pagepath)
                     del data["pages"][deleted]
                     if deleted not in data["updates"]:
                         data["updates"][deleted] = []
@@ -133,7 +138,9 @@ class ConfluenceSpaceDocumentDownloader:
                     if id not in data["updates"]:
                         data["updates"][id] = []
                     data["updates"][id].append(
-                        f"L136 UPDATED - {self._iso_time()}")
+                        f"L136 UPDATED - {pairs[id]}")
+                    # Guarda la actualización de la pareja ID y lastUpdate en el metadato del espacio:
+                    data["pages"][id] = pairs[id]
                     updatedkeys.append(id)
                 self.Downloader_pages_from_space_md(
                     space=space, pageid=updatedkeys)
@@ -150,7 +157,7 @@ class ConfluenceSpaceDocumentDownloader:
         # verificación de la existencia del archivo space_metadata.json:
         update = os.path.isfile(file)
 
-        # En caso de actualización:
+        # En caso de actualización o nueva página:
         if update:
             with open(file, "r", encoding="utf-8") as f:
                 spacedata = json.load(f)
@@ -159,19 +166,17 @@ class ConfluenceSpaceDocumentDownloader:
             spacedata["version"] = version
             spacedata["last_update"] = self._iso_time()
             spacedata["name"] = space
-            updatedref = "L162 UPDATE"
 
         # Esquema del metadato en caso de espacio nuevo
         else:
-            # TODO agregar la fecha de creación del archivo desde este punto
             spacedata = {
                 "name": f"{space}",
                 "version": 1,
                 "when": f"{self._iso_time()}",
+                "lastUpdate" f"{self._iso_time()}"
                 "pages": {},
                 "updates": {}
             }
-            updatedref = "L178 REGISTER"
 
         # Escritura de los pares "ID: LastUpdated.when"
         for id in pagesid:
@@ -180,28 +185,21 @@ class ConfluenceSpaceDocumentDownloader:
             with open(metadatapath, "r", encoding="utf-8") as f:
                 # captura de los datos del metadato de cada page
                 data = json.load(f)
-            # En caso de que el archivo meatadato del espacio exista pero se agrege una página nueva:
+            # En caso de que el archivo meatadato del espacio exista pero se actualice la página:
 
-            # si no son páginas nuevas guardar fecha de creación de cada una
+            # si el metadato del espacio no existe crea los registros en la sección "pages"
             if update == False:
+                spacedata["pages"][id] = data["lastUpdated"]["when"]
                 if id not in spacedata["updates"]:
                     spacedata["updates"][id] = []
                 spacedata["updates"][id].append(
-                    f"CREATED - {data["createdDate"]}")
+                    f"L190 CREATED - {data["createdDate"]}")
+                spacedata["updates"][id].append(
+                    f"L196 REGISTER - {self._iso_time()}")
 
-            if update and id not in data:
-                if id not in spacedata["updates"]:
-                    spacedata["updates"][id] = []
-                # Agregando la fecha de creación de la página
-                spacedata["updates"][id].append(
-                    f"CREATED - {data["createdDate"]}")
-                updatedref = "L189 REGISTER"
-            # Ingresando los pares clave-valor a el archivo spacedata:
-            spacedata["pages"][id] = data["lastUpdated"]["when"]
-            if id not in spacedata["updates"]:
-                spacedata["updates"][id] = []
-            spacedata["updates"][id].append(
-                f"{updatedref} - {self._iso_time()}")
+            # si el metadato del espacio existe pero el id no está en la sección: "pages", crea el registro
+            if update and id not in spacedata["pages"]:
+                spacedata["pages"][id] = data["lastUpdated"]["when"]
 
             # Guardando el metadato del espacio
         with open(file, "w", encoding="utf-8") as f:
