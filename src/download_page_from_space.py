@@ -88,6 +88,7 @@ class ConfluenceSpaceDocumentDownloader:
 
         # 2. Carga de los datos actuales de las páginas en linea:
         pairs = {}
+
         createdAt = {}
         pages = self._pages_from_space(space)
         for page in pages:
@@ -120,6 +121,7 @@ class ConfluenceSpaceDocumentDownloader:
                         f"L120 CREATED - {createdAt[news]}")
                     data["updates"][news].append(
                         f"L121 REGISTER - {pairs[news]}")
+                    data["pages"][news] = pairs[news]
                 self.Downloader_pages_from_space_md(
                     space=space, pageid=newpairs)
 
@@ -173,7 +175,7 @@ class ConfluenceSpaceDocumentDownloader:
                 "name": f"{space}",
                 "version": 1,
                 "when": f"{self._iso_time()}",
-                "lastUpdate" f"{self._iso_time()}"
+                "lastUpdate": f"{self._iso_time()}",
                 "pages": {},
                 "updates": {}
             }
@@ -188,20 +190,16 @@ class ConfluenceSpaceDocumentDownloader:
             # En caso de que el archivo meatadato del espacio exista pero se actualice la página:
 
             # si el metadato del espacio no existe crea los registros en la sección "pages"
-            if update == False:
-                spacedata["pages"][id] = data["lastUpdated"]["when"]
+            if not update:
                 if id not in spacedata["updates"]:
                     spacedata["updates"][id] = []
                 spacedata["updates"][id].append(
                     f"L190 CREATED - {data["createdDate"]}")
                 spacedata["updates"][id].append(
                     f"L196 REGISTER - {self._iso_time()}")
-
-            # si el metadato del espacio existe pero el id no está en la sección: "pages", crea el registro
-            if update and id not in spacedata["pages"]:
                 spacedata["pages"][id] = data["lastUpdated"]["when"]
 
-            # Guardando el metadato del espacio
+        # Guardando el metadato del espacio
         with open(file, "w", encoding="utf-8") as f:
             json.dump(spacedata, f, ensure_ascii=False, indent=4)
 
